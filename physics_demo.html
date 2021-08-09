@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+</head>
+
+<body>
+  <canvas id="canvas" width="800" height="400"></canvas>
+
+  <script src="./Input.js"></script>
+  <script src="./Geo.js"></script>
+
+  <script>
+    const WIDTH = 800
+    const HEIGHT = 400
+
+    const canvas = document.getElementById('canvas')
+    const ctx = canvas.getContext('2d')
+
+    ctx.clearRect(0, 0, WIDTH, HEIGHT)
+
+    const mapWidth = 30
+    const mapHeight = 12
+
+    const blockSize = 32
+
+    const tmps = [
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+      1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    ]
+
+    const player = {
+      velocity: new Vec2(0, 0),
+      pos: new Vec2(60, 100),
+      width: 30,
+      height: 48,
+      inTheAir: true,
+      terrainCollisions: [false, false, false, false, false, false, false, false, false, false],
+      get boundingRect() {
+        return new Rect(this.pos, this.width, this.height)
+      },
+      get x() {
+        return this.pos.x
+      },
+      set x(val) {
+        this.pos.x = val
+      },
+      get y() {
+        return this.pos.y
+      },
+      set y(val) {
+        this.pos.y = val
+      },
+      get vx() {
+        return this.velocity.x
+      },
+      set vx(val) {
+        this.velocity.x = val
+      },
+      get vy() {
+        return this.velocity.y
+      },
+      set vy(val) {
+        this.velocity.y = val
+      }
+    }
+
+    const gravity = 0.98
+
+    Input.init()
+
+    function render(delta) {
+      ctx.clearRect(0, 0, WIDTH, HEIGHT)
+      ctx.save()
+
+      update()
+      drawMap()
+      drawPlayer()
+
+      ctx.restore()
+
+      requestAnimationFrame(render)
+    }
+    render()
+
+    function update() {
+      player.velocity.y = Math.min(player.velocity.y + gravity, 10)
+
+      const dir8 = Input.dir8()
+      if (!player.inTheAir) {
+        switch (dir8) {
+          case 6:
+            player.vx = 3
+            break
+          case 4:
+            player.vx = -3
+            break
+          default:
+            player.vx = 0
+        }
+      } else {
+        switch (dir8) {
+          case 6:
+            player.vx = 2
+            break
+          case 4:
+            player.vx = -2
+            break
+          default:
+            player.vx = 0
+        }
+      }
+
+      // 预测的移动后位置
+      const nextWillingRect = new Rect(player.pos.add(player.velocity), player.width, player.height)
+      // 处理地形碰撞
+      handleTerrainCollision(nextWillingRect)
+
+      player.pos = nextWillingRect.pos
+
+      if (player.terrainCollisions[1] || player.terrainCollisions[2] || player.terrainCollisions[3]) {
+        player.inTheAir = false
+      } else {
+        player.inTheAir = true
+      }
+
+      // player.x += player.vx
+      // // 水平姿势修正
+      // let bottomOffset = 0
+      // if (player.y % blockSize === 0) {
+      //   bottomOffset = -1
+      // }
+      // let mapPos = transGamePosToMapPos(player.x, player.y)
+      // let blBlock = getMapBlock(mapPos.x, mapPos.y + bottomOffset)
+
+      // mapPos = transGamePosToMapPos(player.x + player.width, player.y)
+      // let brBlock = getMapBlock(mapPos.x, mapPos.y + bottomOffset)
+
+      // mapPos = transGamePosToMapPos(player.x, player.y - player.height)
+      // let tlBlock = getMapBlock(mapPos.x, mapPos.y)
+
+      // mapPos = transGamePosToMapPos(player.x + player.width, player.y - player.height)
+      // let trBlock = getMapBlock(mapPos.x, mapPos.y)
+      // if (brBlock || trBlock) {
+      //   if (player.vx > 0) {
+      //     player.vx = 0
+      //     player.x = transGamePosToMapPos(player.x + player.width, player.y).x * blockSize - player.width
+      //   }
+      // }
+      // if (blBlock || tlBlock) {
+      //   if (player.vx < 0) {
+      //     player.vx = 0
+      //     player.x = (transGamePosToMapPos(player.x, player.y).x + 1) * blockSize
+      //   }
+      // }
+
+      // player.y += player.vy
+      // // 垂直姿势修正
+      // let rightOffset = 0
+      // if ((player.x + player.width) % blockSize === 0) {
+      //   rightOffset = -1
+      // }
+
+      // mapPos = transGamePosToMapPos(player.x, player.y)
+      // blBlock = getMapBlock(mapPos.x, mapPos.y)
+
+      // mapPos = transGamePosToMapPos(player.x + player.width, player.y)
+      // brBlock = getMapBlock(mapPos.x + rightOffset, mapPos.y)
+
+      // mapPos = transGamePosToMapPos(player.x, player.y - player.height)
+      // tlBlock = getMapBlock(mapPos.x, mapPos.y)
+
+      // mapPos = transGamePosToMapPos(player.x + player.width, player.y - player.height)
+      // trBlock = getMapBlock(mapPos.x + rightOffset, mapPos.y)
+
+      // if (blBlock || brBlock) {
+      //   player.vy = 0
+      //   player.y = transGamePosToMapPos(player.x, player.y).y * blockSize
+      //   player.inTheAir = false
+      // } else if (tlBlock || trBlock) {
+      //   debugger
+      //   player.vy = 0
+      //   player.y = (transGamePosToMapPos(player.x, player.y - player.height).y + 1) * blockSize + player.height
+      // } else {
+      //   player.inTheAir = true
+      // }
+
+      if (Input.keyIsPressed(' ')) {
+        if (!player.inTheAir) {
+          player.vy = -12
+        }
+      }
+    }
+
+    function drawMap() {
+      for (let y = 0; y < mapHeight; y++) {
+        for (let x = 0; x < mapWidth; x++) {
+          if (getMapBlock(new Vec2(x, y))) {
+            ctx.fillStyle = '#dadada'
+            ctx.fillRect(x * blockSize + 1, y * blockSize + 1, blockSize - 2, blockSize - 2)
+          }
+        }
+      }
+    }
+
+    function drawPlayer() {
+      if (player.inTheAir) {
+        ctx.fillStyle = '#00f000'
+      } else {
+        ctx.fillStyle = '#f00000'
+      }
+      ctx.fillRect(player.x, player.y - player.height, player.width, player.height)
+    }
+
+    /** 
+     * 处理地形碰撞 
+     */
+    function handleTerrainCollision(nextWillingRect) {
+      // 初始化地形碰撞状态数组
+      player.terrainCollisions.fill(false)
+      
+      // ----------进行包围盒-地形碰撞测试-------------
+      player.terrainCollisions = collisionDetect(nextWillingRect)
+      // 处理只有1个中点和墙壁碰撞的情况
+      const midCollisions = [
+        player.terrainCollisions[2], player.terrainCollisions[4], 
+        player.terrainCollisions[6], player.terrainCollisions[8]
+      ]
+      if (midCollisions.filter(val => val === true).length === 1) {
+        handleMidPointCollision(nextWillingRect)
+        return
+      }
+
+      // 处理边界碰撞情况
+      const cornerCollisions = [
+        player.terrainCollisions[1], player.terrainCollisions[3], 
+        player.terrainCollisions[7], player.terrainCollisions[9]
+      ]
+      const cornerCollisionCount = cornerCollisions.filter(val => val === true).length
+      if (cornerCollisionCount === 1) {
+        if (player.terrainCollisions[1]) {
+          /*
+            ·----tileTR
+            |      |
+            |      |
+            |      |
+            |      |
+            bl-----·
+          */
+          const tileTR = transGamePosToMapPos(nextWillingRect.bl).add(new Vec2(1, 0)).scale(32)
+          const crossRect = new Rect(
+            new Vec2(nextWillingRect.pos.x, tileTR.y), 
+            tileTR.x - nextWillingRect.pos.x, 
+            nextWillingRect.pos.y - tileTR.y
+          )
+          // 如果宽大于高，则向上垂直修正；否则水平向右修正
+          if (crossRect.width >= crossRect.height) {
+            player.vy = 0
+            nextWillingRect.pos.y = tileTR.y
+          } else {
+            player.vx = 0
+            nextWillingRect.pos.x = tileTR.x
+          }
+        }
+      } else if (cornerCollisionCount === 2) {
+
+      } else if (cornerCollisionCount === 3) {
+
+      } else if (cornerCollisionCount === 4) {
+
+      }
+    }
+
+    function collisionDetect(rect) {
+      const collisions = new Array(10)
+      collisions.fill(false)
+      if (getMapBlock(transGamePosToMapPos(rect.bl))) {
+        collisions[1] = true
+      }
+      if (getMapBlock(transGamePosToMapPos(rect.b))) {
+        collisions[2] = true
+      }
+      if (getMapBlock(transGamePosToMapPos(rect.br))) {
+        collisions[3] = true
+      }
+      if (getMapBlock(transGamePosToMapPos(rect.l))) {
+        collisions[4] = true
+      }
+      if (getMapBlock(transGamePosToMapPos(rect.r))) {
+        collisions[6] = true
+      }
+      if (getMapBlock(transGamePosToMapPos(rect.tl))) {
+        collisions[7] = true
+      }
+      if (getMapBlock(transGamePosToMapPos(rect.t))) {
+        collisions[8] = true
+      }
+      if (getMapBlock(transGamePosToMapPos(rect.tr))) {
+        collisions[9] = true
+      }
+      return collisions
+    }
+
+    function handleMidPointCollision(rect) {
+      if (player.terrainCollisions[2]) {
+        player.vy = 0
+        rect.pos.y = transGamePosToMapPos(rect.pos).y * blockSize
+      } else if(player.terrainCollisions[4]) {
+        player.vx = 0
+        rect.pos.x = transGamePosToMapPos(rect.pos).x * blockSize + blockSize
+      } else if(player.terrainCollisions[6]) {
+        player.vx = 0
+        rect.pos.x = transGamePosToMapPos(rect.r).x * blockSize - rect.width
+      } else {
+        player.vy = 0
+        rect.pos.y = (transGamePosToMapPos(rect.t).y + 1) * blockSize + rect.height
+      }
+    }
+
+    // function handleCornerCollision(willingRect, crossRect, ) {
+
+    // }
+
+    function transGamePosToMapPos(pos) {
+      return new Vec2(Math.floor(pos.x / blockSize), Math.floor(pos.y / blockSize))
+    }
+    function getMapBlock(pos) {
+      return tmps[pos.y * mapWidth + pos.x]
+    }
+  </script>
+</body>
+
+</html>

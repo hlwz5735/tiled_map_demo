@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script lang="javascript">
+        class InputManager {
+            _dir = 5
+            pressedKeys = []
+
+            _keydownListener = null
+            _keyupListener = null
+
+            init() {
+                this._keydownListener = document.addEventListener('keydown', (e) => {
+                    console.log(`keydown: ${e.key}`)
+                    if (e.key === 'd') {
+                        if (this.pressedKeys.indexOf('d') === -1) {
+                            this.pressedKeys.push('d')
+                            this._dir = 6
+                        }
+                    } else if (e.key === 'a') {
+                        if (this.pressedKeys.indexOf('a') === -1) {
+                            this.pressedKeys.push('a')
+                            this._dir = 4
+                        }
+                    } else if (e.key === 'u') {
+                        if (this.pressedKeys.indexOf('u') === -1) {
+                            this.pressedKeys.push('u')
+                        }
+                    }
+                })
+                this._keyupListener = document.addEventListener('keyup', (e) => {
+                    console.log(`keyup: ${e.key}`)
+                    if (e.key === 'd') {
+                        if (this.pressedKeys.indexOf('d') !== -1) {
+                            this.pressedKeys.splice(this.pressedKeys.indexOf('d'), 1)
+                            this._dir = 5
+                        }
+                    } else if (e.key === 'a') {
+                        if (this.pressedKeys.indexOf('a') !== -1) {
+                            this.pressedKeys.splice(this.pressedKeys.indexOf('a'), 1)
+                            this._dir = 5
+                        }
+                    } else if (e.key === 'u') {
+                        if (this.pressedKeys.indexOf('u') !== -1) {
+                            this.pressedKeys.splice(this.pressedKeys.indexOf('u'), 1)
+                        }
+                    }
+                })
+            }
+
+            destroy() {
+                if (this._keydownListener) {
+                    this._keydownListener.destroy()
+                }
+                if (this._keyupListener) {
+                    this._keyupListener.destroy()
+                }
+            }
+
+            dir() {
+                if (this._dir === 5) {
+                    if (this.pressedKeys.indexOf('a') !== -1) {
+                        this._dir = 4
+                    } else if (this.pressedKeys.indexOf('d') !== -1) {
+                        this._dir = 6
+                    }
+                }
+                return this._dir;
+            }
+
+            button(key) {
+                if (key === 'b') {
+                    return this.pressedKeys.indexOf('u') !== -1
+                }
+                return false
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <canvas width="1300" height="800" id="theCanvas"></canvas>
+
+    <script lang="javascript">
+        var canvas = document.getElementById('theCanvas')
+        var context = canvas.getContext('2d')
+
+        context.fillStyle = '#fafafa'
+        context.fillRect(0, 0, 1000, 800)
+
+        const walkAcceleration = 0.148
+        const runAcceleration = 0.223
+
+        const releaseDeacceleration = -0.21875
+        const reverseDeacceleration = -0.4375
+
+        const maxWalkVelocity = 6.25
+        const maxRunVelocity = 10.25
+
+        const initialVelocity = 0.297
+
+        var posX = 100
+        var velocity = 0
+        var acceleration = 0
+        var bButtonCount = 0
+        var running = false
+        var fillStyle = '#000000'
+        var direction = 1
+        var Input = new InputManager()
+        Input.init()
+
+        function init() {
+            posX = 100
+            velocity = 0
+            acceleration = walkAcceleration
+            fillStyle = '#ff0000'
+            running = false
+            direction = 1
+            bButtonCount = 0
+        }
+
+        function produceVelocity() {
+            let newVelocity = velocity * direction + acceleration
+            newVelocity = Math.max(0, newVelocity)
+            if (running) {
+                newVelocity = Math.min(maxRunVelocity, newVelocity)
+            } else {
+                newVelocity = Math.min(maxWalkVelocity, newVelocity)
+            }
+            return newVelocity * direction
+        }
+
+        function render() {
+            if (Input.button('b')) {
+                bButtonCount = 10
+            } else {
+                bButtonCount = Math.max(0, bButtonCount - 1)
+            }
+
+            if (bButtonCount > 0) {
+                acceleration = runAcceleration
+                running = true
+                fillStyle = '#ff0000'
+            } else {
+                acceleration = walkAcceleration
+                running = false
+                fillStyle = '#aa3333'
+            }
+
+            const dir = Input.dir();
+            if (dir === 5) {
+                if (velocity != 0) {
+                    acceleration = releaseDeacceleration
+                    fillStyle = '#dddd00'
+                } else {
+                    acceleration = 0
+                }
+            } else if (dir === 6) {
+                if (direction !== 1) {
+                    if (velocity !== 0) {
+                        acceleration = reverseDeacceleration
+                        fillStyle = '#00ff00'
+                    } else {
+                        direction = -direction
+                    }
+                }
+            } else if (dir === 4) {
+                if (direction !== -1) {
+                    if (velocity !== 0) {
+                        acceleration = reverseDeacceleration
+                        fillStyle = '#00ff00'
+                    } else {
+                        direction = -direction
+                    }
+                }
+            }
+
+            velocity = produceVelocity()
+            posX += velocity
+
+            drawRect()
+
+            requestAnimationFrame(render);
+        }
+
+        function drawRect() {
+            context.fillStyle = '#fafafa'
+            context.fillRect(0, 0, 1300, 800)
+
+            context.fillStyle = fillStyle
+            context.fillRect(posX - 32, 300, 64, 64);
+        }
+
+        (function () {
+            init()
+            render()
+        }())
+    </script>
+</body>
+
+</html>
