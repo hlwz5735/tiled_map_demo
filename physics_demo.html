@@ -80,10 +80,13 @@
     Input.init()
 
     function render(delta) {
-      ctx.clearRect(0, 0, WIDTH, HEIGHT)
       ctx.save()
+      ctx.clearRect(0, 0, WIDTH, HEIGHT)
 
+      drawMap()
+      drawPlayer()
       update()
+      ctx.clearRect(0, 0, WIDTH, HEIGHT)
       drawMap()
       drawPlayer()
 
@@ -91,38 +94,17 @@
 
       requestAnimationFrame(render)
     }
-    render()
+    requestAnimationFrame(render)
 
     function update() {
       player.velocity.y = Math.min(player.velocity.y + gravity, 10)
-
-      const dir8 = Input.dir8()
-      if (!player.inTheAir) {
-        switch (dir8) {
-          case 6:
-            player.vx = 3
-            break
-          case 4:
-            player.vx = -3
-            break
-          default:
-            player.vx = 0
-        }
-      } else {
-        switch (dir8) {
-          case 6:
-            player.vx = 2
-            break
-          case 4:
-            player.vx = -2
-            break
-          default:
-            player.vx = 0
-        }
-      }
-
+      
+      // 处理用户方向输入
+      handleDirInput()
+      
       // 预测的移动后位置
       const nextWillingRect = new Rect(player.pos.add(player.velocity), player.width, player.height)
+      drawWillingRect(nextWillingRect)
       // 处理地形碰撞
       handleTerrainCollision(nextWillingRect)
 
@@ -133,67 +115,6 @@
       } else {
         player.inTheAir = true
       }
-
-      // player.x += player.vx
-      // // 水平姿势修正
-      // let bottomOffset = 0
-      // if (player.y % blockSize === 0) {
-      //   bottomOffset = -1
-      // }
-      // let mapPos = transGamePosToMapPos(player.x, player.y)
-      // let blBlock = getMapBlock(mapPos.x, mapPos.y + bottomOffset)
-
-      // mapPos = transGamePosToMapPos(player.x + player.width, player.y)
-      // let brBlock = getMapBlock(mapPos.x, mapPos.y + bottomOffset)
-
-      // mapPos = transGamePosToMapPos(player.x, player.y - player.height)
-      // let tlBlock = getMapBlock(mapPos.x, mapPos.y)
-
-      // mapPos = transGamePosToMapPos(player.x + player.width, player.y - player.height)
-      // let trBlock = getMapBlock(mapPos.x, mapPos.y)
-      // if (brBlock || trBlock) {
-      //   if (player.vx > 0) {
-      //     player.vx = 0
-      //     player.x = transGamePosToMapPos(player.x + player.width, player.y).x * blockSize - player.width
-      //   }
-      // }
-      // if (blBlock || tlBlock) {
-      //   if (player.vx < 0) {
-      //     player.vx = 0
-      //     player.x = (transGamePosToMapPos(player.x, player.y).x + 1) * blockSize
-      //   }
-      // }
-
-      // player.y += player.vy
-      // // 垂直姿势修正
-      // let rightOffset = 0
-      // if ((player.x + player.width) % blockSize === 0) {
-      //   rightOffset = -1
-      // }
-
-      // mapPos = transGamePosToMapPos(player.x, player.y)
-      // blBlock = getMapBlock(mapPos.x, mapPos.y)
-
-      // mapPos = transGamePosToMapPos(player.x + player.width, player.y)
-      // brBlock = getMapBlock(mapPos.x + rightOffset, mapPos.y)
-
-      // mapPos = transGamePosToMapPos(player.x, player.y - player.height)
-      // tlBlock = getMapBlock(mapPos.x, mapPos.y)
-
-      // mapPos = transGamePosToMapPos(player.x + player.width, player.y - player.height)
-      // trBlock = getMapBlock(mapPos.x + rightOffset, mapPos.y)
-
-      // if (blBlock || brBlock) {
-      //   player.vy = 0
-      //   player.y = transGamePosToMapPos(player.x, player.y).y * blockSize
-      //   player.inTheAir = false
-      // } else if (tlBlock || trBlock) {
-      //   debugger
-      //   player.vy = 0
-      //   player.y = (transGamePosToMapPos(player.x, player.y - player.height).y + 1) * blockSize + player.height
-      // } else {
-      //   player.inTheAir = true
-      // }
 
       if (Input.keyIsPressed(' ')) {
         if (!player.inTheAir) {
@@ -222,6 +143,13 @@
       ctx.fillRect(player.x, player.y - player.height, player.width, player.height)
     }
 
+    function drawWillingRect(rect) {
+      ctx.save()
+      ctx.fillStyle = 'rgba(100, 0, 100, 0.5)'
+      ctx.fillRect(rect.x, rect.y - rect.height, rect.width, rect.height)
+      ctx.restore()
+    }
+
     /** 
      * 处理地形碰撞 
      */
@@ -248,30 +176,7 @@
       ]
       const cornerCollisionCount = cornerCollisions.filter(val => val === true).length
       if (cornerCollisionCount === 1) {
-        if (player.terrainCollisions[1]) {
-          /*
-            ·----tileTR
-            |      |
-            |      |
-            |      |
-            |      |
-            bl-----·
-          */
-          const tileTR = transGamePosToMapPos(nextWillingRect.bl).add(new Vec2(1, 0)).scale(32)
-          const crossRect = new Rect(
-            new Vec2(nextWillingRect.pos.x, tileTR.y), 
-            tileTR.x - nextWillingRect.pos.x, 
-            nextWillingRect.pos.y - tileTR.y
-          )
-          // 如果宽大于高，则向上垂直修正；否则水平向右修正
-          if (crossRect.width >= crossRect.height) {
-            player.vy = 0
-            nextWillingRect.pos.y = tileTR.y
-          } else {
-            player.vx = 0
-            nextWillingRect.pos.x = tileTR.x
-          }
-        }
+        handleCornerCollision(nextWillingRect)
       } else if (cornerCollisionCount === 2) {
 
       } else if (cornerCollisionCount === 3) {
@@ -313,23 +218,114 @@
 
     function handleMidPointCollision(rect) {
       if (player.terrainCollisions[2]) {
-        player.vy = 0
+        player.vy = Math.min(0, player.vy)
         rect.pos.y = transGamePosToMapPos(rect.pos).y * blockSize
       } else if(player.terrainCollisions[4]) {
-        player.vx = 0
+        player.vx = Math.min(0, player.vx)
         rect.pos.x = transGamePosToMapPos(rect.pos).x * blockSize + blockSize
       } else if(player.terrainCollisions[6]) {
-        player.vx = 0
+        player.vx = Math.max(0, player.vx)
         rect.pos.x = transGamePosToMapPos(rect.r).x * blockSize - rect.width
       } else {
-        player.vy = 0
+        player.vy = Math.max(0, player.vy)
         rect.pos.y = (transGamePosToMapPos(rect.t).y + 1) * blockSize + rect.height
       }
     }
 
-    // function handleCornerCollision(willingRect, crossRect, ) {
+    function handleCornerCollision(nextWillingRect) {
+      if (player.terrainCollisions[1]) {
+        /*
+         * ·----t
+         * p----·
+         */
+        const p = nextWillingRect.bl
+        const t = transGamePosToMapPos(p).add(new Vec2(1, 0)).scale(32)
+        const crossRect = new Rect(new Vec2(p.x, t.y), (t.x - p.x), (p.y - t.y))
+        // 如果宽大于高，则向上垂直修正；否则水平向右修正
+        if (crossRect.width >= crossRect.height) {
+          player.vy = Math.min(0, player.vy)
+          nextWillingRect.pos.y = t.y
+        } else {
+          player.vx = Math.max(0, player.vx)
+          nextWillingRect.pos.x = t.x
+        }
+      } else if (player.terrainCollisions[3]) {
+        /*
+         * t----·
+         * ·----p
+         */
+        const p = nextWillingRect.br
+        const t = transGamePosToMapPos(p).scale(32)
+        const crossRect = new Rect(new Vec2(t.x, t.y), (p.x - t.x), (p.y - t.y))
+        // 如果宽大于高，则向上垂直修正；否则水平向左修正
+        if (crossRect.width >= crossRect.height) {
+          player.vy = Math.min(0, player.vy)
+          nextWillingRect.pos.y = t.y
+        } else {
+          player.vx = Math.min(0, player.vx)
+          nextWillingRect.pos.x = t.x - nextWillingRect.width
+        }
+      } else if (player.terrainCollisions[7]) {
+        /*
+         * p----·
+         * ·----t
+         */
+        const p = nextWillingRect.tl
+        const t = transGamePosToMapPos(p).add(new Vec2(1, 1)).scale(32)
+        const crossRect = new Rect(new Vec2(p.x, p.y), (t.x - p.x), (t.y - p.y))
+        // 如果宽大于高，则向下垂直修正；否则水平向右修正
+        if (crossRect.width >= crossRect.height) {
+          player.vy = Math.max(0, player.vy)
+          nextWillingRect.pos.y = t.y + nextWillingRect.height
+        } else {
+          player.vx = Math.max(0, player.vx)
+          nextWillingRect.pos.x = t.x
+        }
+      } else {
+        /*
+         * ·----p
+         * t----·
+         */
+        const p = nextWillingRect.tr
+        const t = transGamePosToMapPos(p).add(new Vec2(0, 1)).scale(32)
+        const crossRect = new Rect(new Vec2(t.x, p.y), (p.x - t.x), (t.y - p.y))
+        // 如果宽大于高，则向下垂直修正；否则水平向左修正
+        if (crossRect.width >= crossRect.height) {
+          player.vy = Math.max(0, player.vy)
+          nextWillingRect.pos.y = t.y + nextWillingRect.height
+        } else {
+          player.vx = Math.min(0, player.vx)
+          nextWillingRect.pos.x = t.x - nextWillingRect.width
+        }
+      }
+    }
 
-    // }
+    function handleDirInput() {
+      const dir8 = Input.dir8()
+      if (!player.inTheAir) {
+        switch (dir8) {
+          case 6:
+            player.vx = 3
+            break
+          case 4:
+            player.vx = -3
+            break
+          default:
+            player.vx = 0
+        }
+      } else {
+        switch (dir8) {
+          case 6:
+            player.vx = 2
+            break
+          case 4:
+            player.vx = -2
+            break
+          default:
+            player.vx = 0
+        }
+      }
+    }
 
     function transGamePosToMapPos(pos) {
       return new Vec2(Math.floor(pos.x / blockSize), Math.floor(pos.y / blockSize))
