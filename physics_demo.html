@@ -6,15 +6,22 @@
 
 <body>
   <canvas id="canvas" width="800" height="400"></canvas>
+  <div>
+    <button onclick="changeFrameRate(5)">5</button>
+    <button onclick="changeFrameRate(15)">15</button>
+    <button onclick="changeFrameRate(30)">30</button>
+    <button onclick="changeFrameRate(60)">60</button>
+  </div>
 
   <script src="./Input.js"></script>
   <script src="./Geo.js"></script>
 
   <script>
-    const WIDTH = 800
+    const WIDTH = 960
     const HEIGHT = 400
 
     const canvas = document.getElementById('canvas')
+    canvas.width = WIDTH
     const ctx = canvas.getContext('2d')
 
     ctx.clearRect(0, 0, WIDTH, HEIGHT)
@@ -25,17 +32,17 @@
     const blockSize = 32
 
     const tmps = [
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-      1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+      1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0,
+      1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+      1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     ]
 
@@ -79,29 +86,43 @@
 
     Input.init()
 
+    let fps = 60
+    let fpsInterval = 1000 / fps
+    //上次执行的时刻
+    let last = new Date().getTime()
+    
+    function animate() {
+      requestAnimationFrame(animate);
+      // 执行时的时间
+      const now = new Date().getTime()
+      const elapsed = now - last;
+      // 经过了足够的时间
+      if (elapsed > fpsInterval) {
+        // 校正当前时间
+        last = now - (elapsed % fpsInterval); 
+        // 循环的代码
+        render()
+      }
+    }
+    requestAnimationFrame(animate)
+
     function render(delta) {
       ctx.save()
       ctx.clearRect(0, 0, WIDTH, HEIGHT)
 
-      drawMap()
-      drawPlayer()
       update()
-      ctx.clearRect(0, 0, WIDTH, HEIGHT)
       drawMap()
       drawPlayer()
 
       ctx.restore()
-
-      requestAnimationFrame(render)
     }
-    requestAnimationFrame(render)
 
     function update() {
       player.velocity.y = Math.min(player.velocity.y + gravity, 10)
-      
+
       // 处理用户方向输入
       handleDirInput()
-      
+
       // 预测的移动后位置
       const nextWillingRect = new Rect(player.pos.add(player.velocity), player.width, player.height)
       drawWillingRect(nextWillingRect)
@@ -110,6 +131,8 @@
 
       player.pos = nextWillingRect.pos
 
+      // 姿势矫正之后再次检查地面状态
+      player.terrainCollisions = collisionDetect(player.boundingRect)
       if (player.terrainCollisions[1] || player.terrainCollisions[2] || player.terrainCollisions[3]) {
         player.inTheAir = false
       } else {
@@ -136,9 +159,9 @@
 
     function drawPlayer() {
       if (player.inTheAir) {
-        ctx.fillStyle = '#00f000'
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.5)'
       } else {
-        ctx.fillStyle = '#f00000'
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.5)'
       }
       ctx.fillRect(player.x, player.y - player.height, player.width, player.height)
     }
@@ -156,12 +179,12 @@
     function handleTerrainCollision(nextWillingRect) {
       // 初始化地形碰撞状态数组
       player.terrainCollisions.fill(false)
-      
+
       // ----------进行包围盒-地形碰撞测试-------------
       player.terrainCollisions = collisionDetect(nextWillingRect)
       // 处理只有1个中点和墙壁碰撞的情况
       const midCollisions = [
-        player.terrainCollisions[2], player.terrainCollisions[4], 
+        player.terrainCollisions[2], player.terrainCollisions[4],
         player.terrainCollisions[6], player.terrainCollisions[8]
       ]
       if (midCollisions.filter(val => val === true).length === 1) {
@@ -171,7 +194,7 @@
 
       // 处理边界碰撞情况
       const cornerCollisions = [
-        player.terrainCollisions[1], player.terrainCollisions[3], 
+        player.terrainCollisions[1], player.terrainCollisions[3],
         player.terrainCollisions[7], player.terrainCollisions[9]
       ]
       const cornerCollisionCount = cornerCollisions.filter(val => val === true).length
@@ -195,13 +218,13 @@
       if (getMapBlock(transGamePosToMapPos(rect.b))) {
         collisions[2] = true
       }
-      if (getMapBlock(transGamePosToMapPos(rect.br))) {
+      if (getMapBlock(transGamePosToMapPos(rect.br, true))) {
         collisions[3] = true
       }
       if (getMapBlock(transGamePosToMapPos(rect.l))) {
         collisions[4] = true
       }
-      if (getMapBlock(transGamePosToMapPos(rect.r))) {
+      if (getMapBlock(transGamePosToMapPos(rect.r, true))) {
         collisions[6] = true
       }
       if (getMapBlock(transGamePosToMapPos(rect.tl))) {
@@ -210,7 +233,7 @@
       if (getMapBlock(transGamePosToMapPos(rect.t))) {
         collisions[8] = true
       }
-      if (getMapBlock(transGamePosToMapPos(rect.tr))) {
+      if (getMapBlock(transGamePosToMapPos(rect.tr, true))) {
         collisions[9] = true
       }
       return collisions
@@ -220,10 +243,10 @@
       if (player.terrainCollisions[2]) {
         player.vy = Math.min(0, player.vy)
         rect.pos.y = transGamePosToMapPos(rect.pos).y * blockSize
-      } else if(player.terrainCollisions[4]) {
+      } else if (player.terrainCollisions[4]) {
         player.vx = Math.min(0, player.vx)
         rect.pos.x = transGamePosToMapPos(rect.pos).x * blockSize + blockSize
-      } else if(player.terrainCollisions[6]) {
+      } else if (player.terrainCollisions[6]) {
         player.vx = Math.max(0, player.vx)
         rect.pos.x = transGamePosToMapPos(rect.r).x * blockSize - rect.width
       } else {
@@ -327,11 +350,22 @@
       }
     }
 
-    function transGamePosToMapPos(pos) {
-      return new Vec2(Math.floor(pos.x / blockSize), Math.floor(pos.y / blockSize))
+    function transGamePosToMapPos(pos, rightBorder = false) {
+      let xOffset = 0
+      if (rightBorder) {
+        if (pos.x % 32 === 0) {
+          xOffset = -1
+        }
+      }
+      return new Vec2(Math.floor(pos.x / blockSize) + xOffset, Math.floor(pos.y / blockSize))
     }
     function getMapBlock(pos) {
       return tmps[pos.y * mapWidth + pos.x]
+    }
+
+    function changeFrameRate(frameRate) {
+      fps = frameRate
+      fpsInterval = 1000 / fps
     }
   </script>
 </body>
