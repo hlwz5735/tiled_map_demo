@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 
 <head>
+  <title>Tiled Game Demo</title>
 </head>
 
 <body>
@@ -90,7 +91,7 @@
     let fpsInterval = 1000 / fps
     //上次执行的时刻
     let last = new Date().getTime()
-    
+
     function animate() {
       requestAnimationFrame(animate);
       // 执行时的时间
@@ -99,14 +100,14 @@
       // 经过了足够的时间
       if (elapsed > fpsInterval) {
         // 校正当前时间
-        last = now - (elapsed % fpsInterval); 
+        last = now - (elapsed % fpsInterval);
         // 循环的代码
         render()
       }
     }
     requestAnimationFrame(animate)
 
-    function render(delta) {
+    function render() {
       ctx.save()
       ctx.clearRect(0, 0, WIDTH, HEIGHT)
 
@@ -133,11 +134,7 @@
 
       // 姿势矫正之后再次检查地面状态
       player.terrainCollisions = collisionDetect(player.boundingRect)
-      if (player.terrainCollisions[1] || player.terrainCollisions[2] || player.terrainCollisions[3]) {
-        player.inTheAir = false
-      } else {
-        player.inTheAir = true
-      }
+      player.inTheAir = !(player.terrainCollisions[1] || player.terrainCollisions[2] || player.terrainCollisions[3])
 
       if (Input.keyIsPressed(' ')) {
         if (!player.inTheAir) {
@@ -173,35 +170,40 @@
       ctx.restore()
     }
 
-    /** 
-     * 处理地形碰撞 
+    /**
+     * 处理地形碰撞
+     *
+     * @param nextWillingRect 预期的位置矩形
+     * @param secondTime 是否为第二次修正
      */
-    function handleTerrainCollision(nextWillingRect) {
+    function handleTerrainCollision(nextWillingRect, secondTime = false) {
       // 初始化地形碰撞状态数组
       player.terrainCollisions.fill(false)
 
       // ----------进行包围盒-地形碰撞测试-------------
-      player.terrainCollisions = collisionDetect(nextWillingRect)
-      // 处理只有1个中点和墙壁碰撞的情况
+      player.terrainCollisions = collisionDetect(nextWillingRect, secondTime)
       const midCollisions = [
         player.terrainCollisions[2], player.terrainCollisions[4],
         player.terrainCollisions[6], player.terrainCollisions[8]
       ]
-      if (midCollisions.filter(val => val === true).length === 1) {
-        handleMidPointCollision(nextWillingRect)
-        return
-      }
-
-      // 处理边界碰撞情况
+      const midCollisionCount = midCollisions.filter(val => val === true).length
       const cornerCollisions = [
         player.terrainCollisions[1], player.terrainCollisions[3],
         player.terrainCollisions[7], player.terrainCollisions[9]
       ]
       const cornerCollisionCount = cornerCollisions.filter(val => val === true).length
+
+      // 处理只有1个中点和墙壁碰撞的情况
+      if (midCollisionCount === 1 && cornerCollisionCount === 0) {
+        handleMidPointCollision(nextWillingRect)
+        return
+      }
+
+      // 处理边界碰撞情况
       if (cornerCollisionCount === 1) {
         handleCornerCollision(nextWillingRect)
       } else if (cornerCollisionCount === 2) {
-
+        handleBorderCollision(nextWillingRect, secondTime)
       } else if (cornerCollisionCount === 3) {
 
       } else if (cornerCollisionCount === 4) {
@@ -209,16 +211,16 @@
       }
     }
 
-    function collisionDetect(rect) {
+    function collisionDetect(rect, bottomBorder = false) {
       const collisions = new Array(10)
       collisions.fill(false)
-      if (getMapBlock(transGamePosToMapPos(rect.bl))) {
+      if (getMapBlock(transGamePosToMapPos(rect.bl, false, bottomBorder))) {
         collisions[1] = true
       }
-      if (getMapBlock(transGamePosToMapPos(rect.b))) {
+      if (getMapBlock(transGamePosToMapPos(rect.b, false, bottomBorder))) {
         collisions[2] = true
       }
-      if (getMapBlock(transGamePosToMapPos(rect.br, true))) {
+      if (getMapBlock(transGamePosToMapPos(rect.br, true, bottomBorder))) {
         collisions[3] = true
       }
       if (getMapBlock(transGamePosToMapPos(rect.l))) {
@@ -262,7 +264,7 @@
          * p----·
          */
         const p = nextWillingRect.bl
-        const t = transGamePosToMapPos(p).add(new Vec2(1, 0)).scale(32)
+        const t = transGamePosToMapPos(p, false, true).add(new Vec2(1, 0)).scale(32)
         const crossRect = new Rect(new Vec2(p.x, t.y), (t.x - p.x), (p.y - t.y))
         // 如果宽大于高，则向上垂直修正；否则水平向右修正
         if (crossRect.width >= crossRect.height) {
@@ -278,7 +280,7 @@
          * ·----p
          */
         const p = nextWillingRect.br
-        const t = transGamePosToMapPos(p).scale(32)
+        const t = transGamePosToMapPos(p, false, true).scale(32)
         const crossRect = new Rect(new Vec2(t.x, t.y), (p.x - t.x), (p.y - t.y))
         // 如果宽大于高，则向上垂直修正；否则水平向左修正
         if (crossRect.width >= crossRect.height) {
@@ -322,7 +324,25 @@
         }
       }
     }
-
+    function handleBorderCollision(nextWillingRect, secondTime = false) {
+      if (player.terrainCollisions[1] && player.terrainCollisions[3]) {
+        player.vy = Math.min(0, player.vy)
+        nextWillingRect.pos.y = transGamePosToMapPos(nextWillingRect.pos).y * blockSize
+      } else if(player.terrainCollisions[1] && player.terrainCollisions[7]) {
+        player.vx = Math.min(0, player.vx)
+        nextWillingRect.pos.x = transGamePosToMapPos(nextWillingRect.pos).x * blockSize + blockSize
+      } else if(player.terrainCollisions[3] && player.terrainCollisions[9]) {
+        player.vx = Math.max(0, player.vx)
+        nextWillingRect.pos.x = transGamePosToMapPos(nextWillingRect.r).x * blockSize - nextWillingRect.width
+      } else {
+        player.vy = Math.max(0, player.vy)
+        nextWillingRect.pos.y = (transGamePosToMapPos(nextWillingRect.t).y + 1) * blockSize + nextWillingRect.height
+      }
+      // 如果不是第二次修正，则启动第二次修正
+      if (!secondTime) {
+        handleTerrainCollision(nextWillingRect, true)
+      }
+    }
     function handleDirInput() {
       const dir8 = Input.dir8()
       if (!player.inTheAir) {
@@ -350,14 +370,20 @@
       }
     }
 
-    function transGamePosToMapPos(pos, rightBorder = false) {
+    function transGamePosToMapPos(pos, rightBorder = false, bottomBorder = false) {
       let xOffset = 0
+      let yOffset = 0
       if (rightBorder) {
-        if (pos.x % 32 === 0) {
+        if (pos.x % blockSize === 0) {
           xOffset = -1
         }
       }
-      return new Vec2(Math.floor(pos.x / blockSize) + xOffset, Math.floor(pos.y / blockSize))
+      if (bottomBorder) {
+        if (pos.y % blockSize === 0) {
+          yOffset = -1
+        }
+      }
+      return new Vec2(Math.floor(pos.x / blockSize) + xOffset, Math.floor(pos.y / blockSize) + yOffset)
     }
     function getMapBlock(pos) {
       return tmps[pos.y * mapWidth + pos.x]
